@@ -1,0 +1,45 @@
+/*
+ * solar-charger-arduino-nano-v3
+ * v3.1 working tmp36 sensor
+ * Todo:
+ *[x]  get tmp36 sensor working with code
+ *[ ]  get display working
+ *[ ]  display tmp36 on display
+ *[ ]  get mosfet driver circuit working
+ *[ ]  get lm317t current limiting working
+ *[ ]  get shunt resistors working
+ */
+
+#define pwmMax 255
+#define sensorPin A0
+
+int pwmPin = 9;
+
+void setup()
+{
+    Serial.begin(9600);
+    pinMode(pwmPin,OUTPUT);
+    TCCR1B = TCCR1B & B11111000 | B00000101;  // 30Hz Pin 9 & 10
+    TCCR0B = TCCR0B & 0b11111000 | 0x05 ; // 61Hz Pin 5 & 6 
+}
+
+void loop()
+{
+  analogWrite(pwmPin, pwmMax * 0.95); //50% duty cycle
+
+  // Get a reading from the temperature sensor:
+  int reading = analogRead(sensorPin);
+
+  // Convert the reading into voltage:
+  float voltage = reading * (5000 / 1024.0);
+
+  // Convert the voltage into the temperature in Celsius:
+  float temperature = (voltage - 500) / 10;
+
+  // Print the temperature in the Serial Monitor:
+  Serial.print(temperature);
+  Serial.print(" \xC2\xB0"); // shows degree symbol
+  Serial.println("C");
+
+  delay(1000); // wait a second between readings
+}
