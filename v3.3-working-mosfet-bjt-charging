@@ -1,0 +1,74 @@
+/*
+ * solar-charger-arduino-nano-v3
+ * v3.3-working-mosfet-bjt-charging
+ * Todo:
+ *[x]  get tmp36 sensor working with code
+ *[x]  get display working
+ *[x]  display tmp36 on display
+ *[x]  get mosfet driver circuit working
+ *[ ]  create voltage divider for solar
+ *[ ]  create voltage divider for battery
+ *[ ]  get shunt resistors working on solar and battery
+ *[ ]  create sleep arduino when low solar voltage
+ *[ ]  create sleep arduino when battery voltage is less than 6V
+ *[ ]  create cut off solar panel when battery voltage is 8.5V
+ *[ ]  create cut off solar panel based on temp increase (perhaps +10c?)
+ */
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define pwmMax 255
+#define sensorPin A0
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+int pwmPin = 6;
+
+void setup()
+{
+    Serial.begin(9600);
+    pinMode(pwmPin,OUTPUT);
+    TCCR1B = TCCR1B & B11111000 | B00000101;  // 30Hz Pin 9 & 10
+    TCCR0B = TCCR0B & 0b11111000 | 0x05 ; // 61Hz Pin 5 & 6 
+
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
+    { 
+      // Address 0x3D for 128x64
+      Serial.println(F("SSD1306 allocation failed"));
+    }
+    display.clearDisplay();
+    display.ssd1306_command(SSD1306_SETCONTRAST);
+    display.ssd1306_command(10); // Where c is a value from 0 to 255 (sets contrast e.g. brightness)
+
+}
+
+void loop()
+{
+  //duty cycle is inversed by mosfet, 
+  //so 90% duty cycle = 10% on.
+  //10% duty cycle = 90% on.
+  analogWrite(pwmPin, pwmMax * 0.05); //5% duty cycle or on 95%
+
+  // Get a reading from the temperature sensor:
+  int reading = analogRead(sensorPin);
+
+  // Convert the reading into voltage:
+  float voltage = reading * (5000 / 1024.0);
+
+  // Convert the voltage into the temperature in Celsius:
+  float temperature = (voltage - 500) / 10;
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+  display.print("Temp:");
+  display.print(temperature);
+  display.println("C");
+  display.display();
+  display.clearDisplay();
+  delay(50); // wait a second between readings
+}
