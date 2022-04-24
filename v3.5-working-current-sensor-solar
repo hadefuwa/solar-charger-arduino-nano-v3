@@ -114,19 +114,10 @@ void loop()
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0, 10);
-  display.print("Temp: ");
-  display.print(temperature);
-  display.println("C");
-  display.println("-------");
   display.print("Battery V: ");
   display.print(batteryVoltage);
   display.println("V");
   display.println("-------");
-  display.display();
-  delay(250);
-  display.setCursor(0, 10);
-  display.clearDisplay();
-  
   display.print("Solar V: ");
   display.print(solarVoltage);
   display.println("V");
