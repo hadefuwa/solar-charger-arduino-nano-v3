@@ -9,7 +9,6 @@
  *[x]  create voltage divider for solar
  *[x]  create voltage divider for battery
  *[x]  get current sensor working on solar
- *[ ]  get current sensor working on battery
  *[ ]  create sleep arduino when low solar voltage
  *[ ]  create sleep arduino when battery voltage is less than 6V
  *[ ]  create cut off solar panel when battery voltage is 8.5V
@@ -112,34 +111,30 @@ void loop()
   float temperature = (voltage - 500) / 10;
 
   /*******************Display***********************/
-  display.setTextSize(1.5);
+  display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0, 10);
   display.print("Temp: ");
   display.print(temperature);
   display.println("C");
   display.println("-------");
-  display.print("Battery: ");
+  display.print("Battery V: ");
   display.print(batteryVoltage);
-  display.println("V");
-  display.println("-------");
-  display.print("Solar Panel: ");
-  display.print(solarVoltage);
   display.println("V");
   display.println("-------");
   display.display();
   delay(250);
-  
   display.setCursor(0, 10);
   display.clearDisplay();
-  display.println("Solar Current:");
+  
+  display.print("Solar V: ");
+  display.print(solarVoltage);
+  display.println("V");
+  display.println("-------");
+  display.print("Solar A:");
   display.print(current_mA);
   display.println("mA");
   display.println("-------");
-  display.println("Battery Current:");
-  display.print(current_mA);
-  display.println("mA");
-
   display.display();
   display.clearDisplay();
   delay(50); 
