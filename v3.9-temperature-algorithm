@@ -1,0 +1,178 @@
+/*
+ * solar-charger-arduino-nano-v3
+ * v3.9-temperature-algorithm
+ * Todo:
+ *[x]  get tmp36 sensor working with code
+ *[x]  get display working
+ *[x]  display tmp36 on display
+ *[x]  get mosfet driver circuit working
+ *[x]  create voltage divider for solar
+ *[x]  create voltage divider for battery
+ *[x]  get current sensor working on solar
+ *[x]  create sleep arduino when low solar voltage
+ *[x]  create sleep arduino when battery voltage is low
+ *[x]  create cut off solar panel when battery voltage is high
+ *[ ]  create cut off solar panel based on temp increase (perhaps +10c?)
+ *        -algorithm to take initial temp and compare to new temp
+ */
+#include <Wire.h>
+#include <Adafruit_INA219.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include "LowPower.h"
+Adafruit_INA219 ina219;
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define pwmMax 255
+#define sensorPin A0
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+int pwmPin = 6;
+float batteryMaxV = 9;
+float solarVoltage = 0.0;
+float batteryVoltage = 0.0;
+
+void setup()
+{
+    Serial.begin(9600);
+    pinMode(pwmPin,OUTPUT);
+    TCCR1B = TCCR1B & B11111000 | B00000101;  // 30Hz Pin 9 & 10
+    TCCR0B = TCCR0B & 0b11111000 | 0x05 ; // 61Hz Pin 5 & 6 
+
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
+    { 
+      // Address 0x3D for 128x64
+      Serial.println(F("SSD1306 allocation failed"));
+    }
+    display.clearDisplay();
+    display.ssd1306_command(SSD1306_SETCONTRAST);
+    display.ssd1306_command(10); // Where c is a value from 0 to 255 (sets contrast e.g. brightness)
+
+    uint32_t currentFrequency;
+    ina219.begin();
+}
+
+void loop()
+{
+  /*******************Current Sensor***********************/
+  float shuntvoltage = 0;
+  float busvoltage = 0;
+  float current_mA = 0;
+  float loadvoltage = 0;
+  float power_mW = 0;
+  float power_W = 0;
+
+  shuntvoltage = ina219.getShuntVoltage_mV();
+  busvoltage = ina219.getBusVoltage_V();
+  current_mA = ina219.getCurrent_mA();
+  power_mW = ina219.getPower_mW();
+  loadvoltage = busvoltage + (shuntvoltage / 1000);
+  power_W = power_mW / 1000;
+  
+  Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
+  Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
+  Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
+  Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
+  Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
+  Serial.println("");
+  
+  /*******************Voltage Reads***********************/
+  int sampleCount = 0;
+  while (sampleCount < 50) 
+  {
+    solarVoltage += analogRead(A3);
+    batteryVoltage += analogRead(A2);
+    sampleCount++;
+    delay(5);
+  }
+  /*
+   * read the voltage from the two voltage dividers, for solar and battery voltages
+   * Divide by 50 samples
+   * Multiply by 5V 
+   * Divide by 1024 ADC values
+   * Multiply by division factor R1 / R2 ... R1 = 10k , R2 = 1k
+  */
+  solarVoltage = (((float)solarVoltage / 50) * 4.7) / 1024.0 * 11;
+  batteryVoltage = (((float)batteryVoltage / 50) * 4.7) / 1024.0 * 11;
+
+  /*******************PWM Duty Cycle***********************/
+  //duty cycle is inversed by mosfet, 
+  //so 90% duty cycle = 10% on.
+  //10% duty cycle = 90% on.
+  analogWrite(pwmPin, pwmMax * 0.05); //5% duty cycle or on 95%
+
+  /*******************Temperature Reading***********************/
+  // Get a reading from the temperature sensor:
+  int reading = analogRead(sensorPin);
+
+  // Convert the reading into voltage:
+  float voltage = reading * (5000 / 1024.0);
+
+  // Convert the voltage into the temperature in Celsius:
+  float temperature = (voltage - 500) / 10;
+
+  /*******************Display***********************/
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+  display.print("Battery V: ");
+  display.print(batteryVoltage);
+  display.println("V");
+  //display.println("-------");
+  display.print("Solar V: ");
+  display.print(solarVoltage);
+  display.println("V");
+  //display.println("-------");
+  display.print("Solar I:");
+  display.print(current_mA);
+  display.println("mA");
+  //display.println("-------");
+  display.print("Solar Pwr:");
+  display.print(power_W);
+  display.println("W");
+  //display.println("-------");
+  display.display();
+  display.clearDisplay();
+  delay(50);
+
+   /*******************Sleep Arduino When Low Solar or Low Battery V***********************/
+   /*
+    * If the current from the panel is under 30mA:
+    *   Wait 1 second to check the current wasn't an erronous error.
+    *   If still under 30mA; 
+    *   - Display error to OLED
+    *   - Switch off MOSFET with 100% duty cycle
+    *   - Turn off OLED display
+    *   - Sleep Arduino for 64 seconds
+    */
+   
+  if (current_mA < 30 || batteryVoltage < 6.5 || batteryVoltage > 8.7)
+  {
+    delay(1000);
+    current_mA = ina219.getCurrent_mA();
+    batteryVoltage += analogRead(A2);
+    batteryVoltage = ((float)batteryVoltage * 4.7) / 1024.0 * 11;
+    
+    if (current_mA < 30 || batteryVoltage < 6.5 || batteryVoltage > 8.7)
+    {
+      display.clearDisplay();
+      display.setTextSize(2);
+      display.setCursor(0, 10);
+      display.println("ERROR!");
+      display.display();
+      delay(200);
+      display.clearDisplay();
+      analogWrite(pwmPin, pwmMax); //Switch off MOSFET with 100% duty cycle
+      display.ssd1306_command(SSD1306_DISPLAYOFF);
+      for (int i = 0; i < 1; i++) // 8 seconds * 8 = 64 seconds
+//MUST CHANGE THE 1 FOR TESTING TO 8 LOOPS
+      {
+        LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+      }
+      display.ssd1306_command(SSD1306_DISPLAYON);
+    }
+  }
+}
