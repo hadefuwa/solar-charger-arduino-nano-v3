@@ -171,7 +171,7 @@ void loop()
   if (current_mA < 30 || batteryVoltage < batteryMinV || batteryVoltage > batteryMaxV || temperature > 40)
   {
     errorFlag++;
-    delay(250);
+    delay(50);
   }
 
   /************Error Handling**********/
