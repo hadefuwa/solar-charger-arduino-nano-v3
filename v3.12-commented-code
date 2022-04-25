@@ -1,6 +1,6 @@
 /*
  * solar-charger-arduino-nano-v3
- * v3.12-clean-code
+ * v3.12-commented-code
  * Todo:
  *[x]  get tmp36 sensor working with code
  *[x]  get display working
@@ -15,7 +15,6 @@
  *[x]  create cut off solar panel based on temp increase 
  *[x]  indicator leds
  *[x]  change error algorithm
- *[ ]  clean up code
  *[ ]  comment all code with detailed explanations
  *[ ]  conduct charge test with panel
  */
@@ -32,7 +31,6 @@ Adafruit_INA219 ina219;
 #define sensorPin A0
 #define temperatureLED 7 //Red LED for alerting high temperature
 #define chargedLED 5 //Red LED for alerting high temperature
-
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
