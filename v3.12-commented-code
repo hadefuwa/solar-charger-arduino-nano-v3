@@ -1,23 +1,14 @@
 /*
- * solar-charger-arduino-nano-v3
- * v3.12-commented-code
- * Todo:
- *[x]  get tmp36 sensor working with code
- *[x]  get display working
- *[x]  display tmp36 on display
- *[x]  get mosfet driver circuit working
- *[x]  create voltage divider for solar
- *[x]  create voltage divider for battery
- *[x]  get current sensor working on solar
- *[x]  create sleep arduino when low solar voltage
- *[x]  create sleep arduino when battery voltage is low
- *[x]  create cut off solar panel when battery voltage is high
- *[x]  create cut off solar panel based on temp increase 
- *[x]  indicator leds
- *[x]  change error algorithm
- *[ ]  comment all code with detailed explanations
- *[ ]  conduct charge test with panel
+ * Author: Hamed Adefuwa
+ * University: Leeds Beckett University
+ * Module: Production Project (Final Year Project)
+ * Date: 25/04/2022
+ * Youtube Channel: https://www.youtube.com/hamedadefuwa
+ * Title: solar-charger-arduino-nano-v3
+ * Version: v3.12-commented-code
  */
+
+/*******************Decla***********************/ 
 #include <Wire.h>
 #include <Adafruit_INA219.h>
 #include <Adafruit_SSD1306.h>
