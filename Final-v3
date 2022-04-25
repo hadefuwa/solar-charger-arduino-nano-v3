@@ -28,7 +28,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 //Variables 
 int pwmPin = 6; //PWM signal pin number for MOSFET
 int errorFlag = 0;
-float batteryMaxV = 8.7; //10V was for testing, this needs to be reduced to 8.7V
+float batteryMaxV = 10; //10V was for testing, this needs to be reduced to 8.7V
 float batteryMinV = 6.5; //Minimum value of the battery voltage. So 1.2V * 6 cells = 6.6V
 float solarVoltage = 0.0;
 float batteryVoltage = 0.0;
@@ -177,15 +177,6 @@ void loop()
   /************Error Handling**********/
   if (errorFlag > 3)
   {
-    //Display error on OLED
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setCursor(0, 10);
-    display.println("ERROR!");
-    display.display();
-    delay(200);
-    display.clearDisplay();
-    
     //Turn off MOSFET
     analogWrite(pwmPin, pwmMax); //Switch off MOSFET with 100% duty cycle
 
@@ -206,6 +197,5 @@ void loop()
 
     //Reset error flag
     errorFlag = 0;
-    delay(250);
   }
 }
