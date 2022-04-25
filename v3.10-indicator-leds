@@ -13,7 +13,7 @@
  *[x]  create sleep arduino when battery voltage is low
  *[x]  create cut off solar panel when battery voltage is high
  *[x]  create cut off solar panel based on temp increase 
- *[ ]  indicator leds
+ *[x]  indicator leds
  *[ ]  clean up code
  *[ ]  comment all code with detailed explanations
  */
@@ -29,12 +29,14 @@ Adafruit_INA219 ina219;
 #define pwmMax 255
 #define sensorPin A0
 #define temperatureLED 7 //Red LED for alerting high temperature
+#define chargedLED 5 //Red LED for alerting high temperature
+
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 int pwmPin = 6;
-float batteryMaxV = 10; //10V was for testing, this needs to be reduced to 8.7V
+float batteryMaxV = 8; //10V was for testing, this needs to be reduced to 8.7V
 float batteryMinV = 6.5;
 float solarVoltage = 0.0;
 float batteryVoltage = 0.0;
@@ -44,6 +46,7 @@ void setup()
     Serial.begin(9600);
     pinMode(pwmPin,OUTPUT);
     pinMode(temperatureLED, OUTPUT);
+    pinMode(chargedLED, OUTPUT);
     TCCR1B = TCCR1B & B11111000 | B00000101;  // 30Hz Pin 9 & 10
     TCCR0B = TCCR0B & 0b11111000 | 0x05 ; // 61Hz Pin 5 & 6 
 
@@ -156,6 +159,24 @@ void loop()
     *   - Turn off OLED display
     *   - Sleep Arduino for 64 seconds
     */
+
+    /*******************Red LED for Error***********************/
+  if (current_mA < 30 || batteryVoltage < batteryMinV ||temperature > 40)
+  {
+    // turn on red LED
+    digitalWrite(temperatureLED, HIGH);
+    delay(50);
+    digitalWrite(temperatureLED, LOW);
+  }
+
+  /*******************Green LED for Charged***********************/
+  if (batteryVoltage > batteryMaxV)
+  {
+    // turn on green LED
+    digitalWrite(chargedLED, HIGH);
+    delay(50);
+    digitalWrite(chargedLED, LOW);
+  }
   
   if (current_mA < 30 || batteryVoltage < batteryMinV || batteryVoltage > batteryMaxV || temperature > 40)
   {
@@ -190,12 +211,5 @@ void loop()
     }
   }
 
-     /*******************RED LED for High Temperature***********************/
-  if (temperature > 40)
-  {
-    // turn on red LED
-    digitalWrite(temperatureLED, HIGH);
-    delay(100);
-    digitalWrite(temperatureLED, LOW);
-  }
+     
 }
