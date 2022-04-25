@@ -96,8 +96,8 @@ void loop()
    * Divide by 1024 ADC values
    * Multiply by division factor R1 / R2 ... R1 = 10k , R2 = 1k
   */
-  solarVoltage = (((float)solarVoltage / 50) * 4.7) / 1024.0 * 11;
-  batteryVoltage = (((float)batteryVoltage / 50) * 4.7) / 1024.0 * 11;
+  solarVoltage = (((float)solarVoltage / 50) * 5) / 1024.0 * 11;
+  batteryVoltage = (((float)batteryVoltage / 50) * 5) / 1024.0 * 11;
 
   /*******************PWM Duty Cycle***********************/
   //duty cycle is inversed by mosfet, 
