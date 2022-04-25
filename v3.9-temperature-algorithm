@@ -12,8 +12,7 @@
  *[x]  create sleep arduino when low solar voltage
  *[x]  create sleep arduino when battery voltage is low
  *[x]  create cut off solar panel when battery voltage is high
- *[ ]  create cut off solar panel based on temp increase (perhaps +10c?)
- *        -algorithm to take initial temp and compare to new temp
+ *[x]  create cut off solar panel based on temp increase 
  */
 #include <Wire.h>
 #include <Adafruit_INA219.h>
@@ -32,7 +31,8 @@ Adafruit_INA219 ina219;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 int pwmPin = 6;
-float batteryMaxV = 9;
+float batteryMaxV = 10; //10V was for testing, this needs to be reduced to 8.7V
+float batteryMinV = 6.5;
 float solarVoltage = 0.0;
 float batteryVoltage = 0.0;
 
@@ -154,7 +154,7 @@ void loop()
     *   - Sleep Arduino for 64 seconds
     */
   
-  if (current_mA < 30 || batteryVoltage < 6.5 || batteryVoltage > 10 || temperature > 40)
+  if (current_mA < 30 || batteryVoltage < batteryMinV || batteryVoltage > batteryMaxV || temperature > 40)
   {
     //turn on mosfet if it was turned off from previous error/sleep state
     analogWrite(pwmPin, pwmMax * 0.05);
@@ -167,7 +167,7 @@ void loop()
     voltage = reading * (5000 / 1024.0);
     temperature = (voltage - 500) / 10;
     
-    if (current_mA < 30 || batteryVoltage < 6.5 || batteryVoltage > 10 || temperature > 40)
+    if (current_mA < 30 || batteryVoltage < batteryMinV || batteryVoltage > batteryMaxV || temperature > 40)
     {
       display.clearDisplay();
       display.setTextSize(2);
