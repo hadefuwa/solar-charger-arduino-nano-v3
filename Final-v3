@@ -1,0 +1,211 @@
+/*
+ * Author: Hamed Adefuwa
+ * University: Leeds Beckett University
+ * Module: Production Project (Final Year Project)
+ * Date: 25/04/2022
+ * Youtube Channel: https://www.youtube.com/hamedadefuwa
+ * Title: solar-charger-arduino-nano-v3
+ * Version: Final-v3
+ * Schematic Link: _____________
+ */
+
+//Headers, Definitions & Declarations 
+#include <Wire.h>
+#include <Adafruit_INA219.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include "LowPower.h"
+Adafruit_INA219 ina219;
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define pwmMax 255
+#define sensorPin A0
+#define temperatureLED 7 //Red LED for alerting high temperature
+#define chargedLED 5 //Red LED for alerting high temperature
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+//Variables 
+int pwmPin = 6; //PWM signal pin number for MOSFET
+int errorFlag = 0;
+float batteryMaxV = 8.7; //10V was for testing, this needs to be reduced to 8.7V
+float batteryMinV = 6.5; //Minimum value of the battery voltage. So 1.2V * 6 cells = 6.6V
+float solarVoltage = 0.0;
+float batteryVoltage = 0.0;
+
+//Setup
+void setup()
+{
+    Serial.begin(9600);
+
+    //Output Pins
+    pinMode(pwmPin,OUTPUT);
+    pinMode(temperatureLED, OUTPUT);
+    pinMode(chargedLED, OUTPUT);
+
+    //Changes PWM Frequency on Arduino Pins
+    TCCR1B = TCCR1B & B11111000 | B00000101;  // 30Hz Pin 9 & 10
+    TCCR0B = TCCR0B & 0b11111000 | 0x05 ; // 61Hz Pin 5 & 6 
+
+    //OLED Display Setup
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
+    { 
+      // Address 0x3D for 128x64
+      Serial.println(F("SSD1306 allocation failed"));
+    }
+    display.clearDisplay();
+    display.ssd1306_command(SSD1306_SETCONTRAST);
+    display.ssd1306_command(10); // Where c is a value from 0 to 255 (sets contrast e.g. brightness)
+
+    //Current Sensor Setup
+    uint32_t currentFrequency;
+    ina219.begin();
+}
+
+//Main Program
+void loop()
+{
+  /*******************Current Sensor***********************/
+  float shuntvoltage = 0;
+  float busvoltage = 0;
+  float current_mA = 0;
+  float loadvoltage = 0;
+  float power_mW = 0;
+  float power_W = 0;
+
+  shuntvoltage = ina219.getShuntVoltage_mV();
+  busvoltage = ina219.getBusVoltage_V();
+  current_mA = ina219.getCurrent_mA();
+  power_mW = ina219.getPower_mW();
+  loadvoltage = busvoltage + (shuntvoltage / 1000);
+  power_W = power_mW / 1000;
+  
+  /*******************Voltage Reads***********************/
+  int sampleCount = 0;
+  while (sampleCount < 50) 
+  {
+    solarVoltage += analogRead(A3);
+    batteryVoltage += analogRead(A2);
+    sampleCount++;
+    delay(5);
+  }
+  /*
+   * read the voltage from the two voltage dividers, for solar and battery voltages
+   * Divide by 50 samples
+   * Multiply by 5V 
+   * Divide by 1024 ADC values
+   * Multiply by division factor R1 / R2 ... R1 = 10k , R2 = 1k
+  */
+  solarVoltage = (((float)solarVoltage / 50) * 4.7) / 1024.0 * 11;
+  batteryVoltage = (((float)batteryVoltage / 50) * 4.7) / 1024.0 * 11;
+
+  /*******************PWM Duty Cycle***********************/
+  //duty cycle is inversed by mosfet, 
+  //so 90% duty cycle = 10% on.
+  //10% duty cycle = 90% on.
+  analogWrite(pwmPin, pwmMax * 0.05); //5% duty cycle or on 95%
+
+  /*******************Temperature Reading***********************/
+  // Read the temperature sensor
+  int reading = analogRead(sensorPin);
+  // Convert reading into voltage
+  float voltage = reading * (5000 / 1024.0);
+  // Convert  voltage into temperature in Celsius
+  float temperature = (voltage - 500) / 10;
+
+  /*******************Display***********************/
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+  display.print("Temp:");
+  display.print(temperature);
+  display.println("C");
+  display.print("Battery V: ");
+  display.print(batteryVoltage);
+  display.println("V");
+  display.print("Solar V: ");
+  display.print(solarVoltage);
+  display.println("V");
+  display.print("Solar I:");
+  display.print(current_mA);
+  display.println("mA");
+  display.print("Solar Pwr:");
+  display.print(power_W);
+  display.println("W");
+  display.display();
+  display.clearDisplay();
+  delay(50);
+
+   /*******************Error Handling***********************/
+   /*
+    * If the battery is fully charged, a green LED is flashed.
+    * If an error is detected, a red LED is flashed and an error flag incremented.
+    * Once four errors are received, the program enters error handling.
+    * Error Handling:
+    *   1. An error message is displayed on screen.
+    *   2. The Mosfet is switched off.
+    *   3. The screen is switched off.
+    *   4. The Arduino sleeps for 64 seconds.
+    *   5. The program resets.
+    */
+
+    /*********Green LED for Charged*********/
+  if (batteryVoltage > batteryMaxV)
+  {
+    // turn on green LED
+    digitalWrite(chargedLED, HIGH);
+    delay(50);
+    digitalWrite(chargedLED, LOW);
+  }
+
+    /************Red LED for Error**********/
+  if (current_mA < 30 || batteryVoltage < batteryMinV ||temperature > 40)
+  {
+    // turn on red LED
+    digitalWrite(temperatureLED, HIGH);
+    delay(50);
+    digitalWrite(temperatureLED, LOW);
+  }
+
+  /************Error Flag**********/
+  if (current_mA < 30 || batteryVoltage < batteryMinV || batteryVoltage > batteryMaxV || temperature > 40)
+  {
+    errorFlag++;
+    delay(250);
+  }
+
+  /************Error Handling**********/
+  if (errorFlag > 3)
+  {
+    //Display error on OLED
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(0, 10);
+    display.println("ERROR!");
+    display.display();
+    delay(200);
+    display.clearDisplay();
+    
+    //Turn off MOSFET
+    analogWrite(pwmPin, pwmMax); //Switch off MOSFET with 100% duty cycle
+
+    //Turn off Display
+    display.ssd1306_command(SSD1306_DISPLAYOFF);
+
+    //For loop to sleep Arduino
+    for (int i = 0; i < 8; i++) // 8 seconds * 8 = 64 seconds
+    {
+      LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+    }
+
+    //Turn on Display
+    display.ssd1306_command(SSD1306_DISPLAYON);
+    
+    //Turn back on mosfet if it was turned off from previous error/sleep state
+    analogWrite(pwmPin, pwmMax * 0.05);
+
+    //Reset error flag
+    errorFlag = 0;
+    delay(250);
+  }
+}
