@@ -14,7 +14,7 @@
  *[x]  create cut off solar panel when battery voltage is high
  *[x]  create cut off solar panel based on temp increase 
  *[x]  indicator leds
- *[ ]  change error algorithm
+ *[x]  change error algorithm
  *[ ]  clean up code
  *[ ]  comment all code with detailed explanations
  *[ ]  conduct charge test with panel
@@ -38,7 +38,8 @@ Adafruit_INA219 ina219;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 int pwmPin = 6;
-float batteryMaxV = 8.7; //10V was for testing, this needs to be reduced to 8.7V
+int errorFlag = 0;
+float batteryMaxV = 10; //10V was for testing, this needs to be reduced to 8.7V
 float batteryMinV = 6.5;
 float solarVoltage = 0.0;
 float batteryVoltage = 0.0;
@@ -182,38 +183,30 @@ void loop()
   
   if (current_mA < 30 || batteryVoltage < batteryMinV || batteryVoltage > batteryMaxV || temperature > 40)
   {
-
+    errorFlag++;
+    delay(250);
   }
+
+  if (errorFlag > 3)
+  {
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(0, 10);
+    display.println("ERROR!");
+    display.display();
+    delay(200);
+    display.clearDisplay();
+    analogWrite(pwmPin, pwmMax); //Switch off MOSFET with 100% duty cycle
+    display.ssd1306_command(SSD1306_DISPLAYOFF);
+    for (int i = 0; i < 1; i++) // 8 seconds * 8 = 64 seconds
+    //MUST CHANGE THE 1 FOR TESTING TO 8 LOOPS
+    {
+      LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+    }
+    display.ssd1306_command(SSD1306_DISPLAYON);
     //turn on mosfet if it was turned off from previous error/sleep state
     analogWrite(pwmPin, pwmMax * 0.05);
-    delay(1000); 
-    //Redo all readings
-    current_mA = ina219.getCurrent_mA();
-    batteryVoltage += analogRead(A2);
-    batteryVoltage = ((float)batteryVoltage * 4.7) / 1024.0 * 11;
-    reading = analogRead(sensorPin);
-    voltage = reading * (5000 / 1024.0);
-    temperature = (voltage - 500) / 10;
-    
-    if (current_mA < 30 || batteryVoltage < batteryMinV || batteryVoltage > batteryMaxV || temperature > 40)
-    {
-      display.clearDisplay();
-      display.setTextSize(2);
-      display.setCursor(0, 10);
-      display.println("ERROR!");
-      display.display();
-      delay(200);
-      display.clearDisplay();
-      analogWrite(pwmPin, pwmMax); //Switch off MOSFET with 100% duty cycle
-      display.ssd1306_command(SSD1306_DISPLAYOFF);
-      for (int i = 0; i < 1; i++) // 8 seconds * 8 = 64 seconds
-//MUST CHANGE THE 1 FOR TESTING TO 8 LOOPS
-      {
-        LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
-      }
-      display.ssd1306_command(SSD1306_DISPLAYON);
-    }
+    errorFlag = 0;
+    delay(250);
   }
-
-     
 }
