@@ -28,7 +28,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 //Variables 
 int pwmPin = 6; //PWM signal pin number for MOSFET
 int errorFlag = 0;
-float batteryMaxV = 10; //10V was for testing, this needs to be reduced to 8.7V
+float batteryMaxV = 8.8; //Max value of the battery voltage
 float batteryMinV = 6.5; //Minimum value of the battery voltage. So 1.2V * 6 cells = 6.6V
 float solarVoltage = 0.0;
 float batteryVoltage = 0.0;
